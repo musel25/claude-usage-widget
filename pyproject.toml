@@ -1,0 +1,16 @@
+[project]
+name = "claude-usage-widget"
+version = "0.1.0"
+description = "Linux desktop widget and CLI showing your claude.ai usage limits"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "musel25" }]
+dependencies = []
+
+# Notes:
+# - claude_usage_cli.py and claude_usage_core.py use only the Python standard
+#   library, so no pip dependencies are needed for CLI usage.
+# - claude_usage_widget.py needs GTK3 + PyGObject, which on Linux are installed
+#   as system packages, not via pip. See README.md for the apt/dnf commands.
+# - `curl` must be available on PATH.

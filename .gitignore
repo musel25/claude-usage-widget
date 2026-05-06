@@ -1,0 +1,19 @@
+# Local credentials — never commit
+config.env
+
+# Personal install notes
+revert.md
+
+# Local autostart entry (contains absolute paths)
+claude-usage-widget.desktop
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.python-version
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/

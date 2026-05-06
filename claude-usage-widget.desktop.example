@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Claude Usage Widget
+# Replace <INSTALL_DIR> with the absolute path to your clone of this repo.
+Exec=/usr/bin/python3 <INSTALL_DIR>/claude_usage_widget.py
+Icon=utilities-system-monitor
+Comment=Floating Claude.ai usage monitor
+Categories=Utility;
+StartupNotify=false
+Terminal=false
