@@ -35,110 +35,97 @@ if WIDGET_MODE in ('popup', 'desktop') and os.environ.get('GDK_BACKEND') != 'x11
 
 import gi
 gi.require_version('Gtk', '3.0')
+gi.require_version('Gdk', '3.0')
 from gi.repository import Gtk, GLib, Gdk
 
-CSS = b"""
-window {
-    background-color: #111111;
-}
-.header-label {
-    color: #ffffff;
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 1px;
-}
-.badge {
-    background-color: #1e3a5f;
-    border-radius: 6px;
-    padding: 2px 8px;
-}
-.badge-label {
-    color: #4a9eff;
-    font-size: 10px;
-    font-weight: 500;
-}
-.row-name {
-    color: #e8e8e8;
-    font-size: 12px;
-}
-.row-sub {
-    color: #666666;
-    font-size: 10px;
-}
-.pct-label {
-    color: #aaaaaa;
-    font-size: 11px;
-}
-.pct-high {
-    color: #ff6b6b;
-    font-size: 11px;
-}
-.section-title {
-    color: #888888;
-    font-size: 10px;
-    letter-spacing: 1.5px;
-}
-.refresh-label {
-    color: #444444;
-    font-size: 9px;
-}
-.error-label {
-    color: #ff6b6b;
-    font-size: 11px;
-}
-progress, trough {
-    min-height: 4px;
-    border-radius: 2px;
-}
-progress {
-    background-color: #4a9eff;
-    border-radius: 2px;
-}
-trough {
-    background-color: #2a2a2a;
-    border-radius: 2px;
-}
-.progress-warn progress {
-    background-color: #f5a623;
-}
-.progress-danger progress {
-    background-color: #ff4444;
-}
-"""
+CSS = b'''
+window { background: transparent; font-family: Lato, sans-serif; }
+.panel { background: #172337; border: 1px solid #3a4b64; border-radius: 22px; }
+label { color: #f4f7fc; }
+.title { font-size: 22px; font-weight: 800; }
+.subtitle { color: #adbacd; font-size: 13px; }
+.badge { color: #c4d9fa; background: #2a3d58; border-radius: 8px; padding: 5px 10px; font-size: 11px; font-weight: 700; }
+.value { font-size: 66px; font-weight: 300; letter-spacing: -2px; }
+.unit { color: #adbacd; font-size: 15px; padding-bottom: 15px; }
+.remaining { color: #94bfff; font-size: 15px; font-weight: 700; }
+.detail { font-size: 15px; font-weight: 700; }
+.caption { color: #adbacd; font-size: 12px; }
+.status { color: #adbacd; font-size: 11px; }
+.warning { color: #f5c879; }
+.error { color: #ff9292; }
+.reset-box { background: #203047; border-radius: 12px; padding: 16px; }
+button { background: transparent; background-image: none; color: #c4d9fa; border: 1px solid #475975; border-radius: 8px; padding: 7px 12px; box-shadow: none; text-shadow: none; font-size: 12px; }
+button:hover { background: #304561; border-color: #94bfff; }
+button:focus { border-color: #94bfff; outline: 2px solid #94bfff; outline-offset: 2px; }
+button:disabled { color: #7a8aa1; border-color: #304159; }
+.close { border: none; padding: 3px 6px; font-size: 18px; }
+separator { background: #35445a; min-height: 1px; }
+'''
+
+
+def label(text: str, style: str, xalign: float = 0) -> Gtk.Label:
+    item = Gtk.Label(label=text, xalign=xalign)
+    item.get_style_context().add_class(style)
+    return item
+
+
+class Meter(Gtk.DrawingArea):
+    """A quiet segmented meter, with a partially filled final segment."""
+
+    def __init__(self):
+        super().__init__()
+        self.percent = None
+        self.set_size_request(-1, 26)
+        self.connect('draw', self.draw_meter)
+        self.get_accessible().set_name('Usage meter')
+
+    def update(self, percent):
+        self.percent = percent
+        self.get_accessible().set_description(
+            'Usage unavailable' if percent is None else f'{percent:g}% of usage used'
+        )
+        self.queue_draw()
+
+    def draw_meter(self, _widget, cr):
+        count, gap, height = 32, 4, 12
+        width = (self.get_allocated_width() - gap * (count - 1)) / count
+        y = (self.get_allocated_height() - height) / 2
+        color = (0.58, 0.75, 1.0)
+        if self.percent is not None and self.percent >= 90:
+            color = (1.0, 0.57, 0.57)
+        elif self.percent is not None and self.percent >= 75:
+            color = (0.96, 0.78, 0.47)
+        filled = min(100, max(0, self.percent or 0)) / 100 * count
+        for i in range(count):
+            x = i * (width + gap)
+            cr.set_source_rgb(0.21, 0.29, 0.40)
+            cr.rectangle(x, y, width, height)
+            cr.fill()
+            fraction = min(1, max(0, filled - i))
+            if fraction:
+                cr.set_source_rgb(*color)
+                cr.rectangle(x, y, width * fraction, height)
+                cr.fill()
+        return False
 
 
 def make_row(name, sublabel, pct):
     outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-    outer.set_margin_bottom(14)
-
-    top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
-
-    name_label = Gtk.Label(label=name, xalign=0)
-    name_label.get_style_context().add_class('row-name')
-
-    pct_label = Gtk.Label(label=f'{pct:.0f}% used', xalign=1)
-    pct_label.get_style_context().add_class('pct-high' if pct >= 80 else 'pct-label')
-    pct_label.set_hexpand(True)
-
-    top.pack_start(name_label, False, False, 0)
-    top.pack_end(pct_label, False, False, 0)
-
-    bar = Gtk.ProgressBar()
-    bar.set_fraction(min(pct / 100.0, 1.0))
-    bar.set_hexpand(True)
-    if pct >= 80:
-        bar.get_style_context().add_class('progress-danger')
-    elif pct >= 60:
-        bar.get_style_context().add_class('progress-warn')
-
+    outer.set_margin_top(16)
+    top = Gtk.Box(spacing=12)
+    top.pack_start(label(name, 'detail'), False, False, 0)
+    value = label(f'{pct:g}% used', 'caption', 1)
+    if pct >= 90:
+        value.get_style_context().add_class('error')
+    elif pct >= 75:
+        value.get_style_context().add_class('warning')
+    top.pack_end(value, False, False, 0)
     outer.add(top)
-    outer.add(bar)
-
+    meter = Meter()
+    meter.update(pct)
+    outer.add(meter)
     if sublabel:
-        sub = Gtk.Label(label=sublabel, xalign=0)
-        sub.get_style_context().add_class('row-sub')
-        outer.add(sub)
-
+        outer.add(label(sublabel, 'caption'))
     return outer
 
 
@@ -146,7 +133,9 @@ class ClaudeUsageWindow(Gtk.Window):
 
     def __init__(self):
         super().__init__(title='Claude Usage')
-        self.set_default_size(360, 50)
+        self.set_default_size(424, 50)
+        self.busy = False
+        self.alive = True
         self.set_resizable(False)
         self.set_border_width(0)
 
@@ -162,10 +151,15 @@ class ClaudeUsageWindow(Gtk.Window):
             self.set_keep_above(True)
             self.set_position(Gtk.WindowPosition.CENTER)
             self.set_type_hint(Gdk.WindowTypeHint.UTILITY)
-            self.connect('key-press-event', self._on_key_press)
             self.connect('focus-out-event', lambda *_: (Gtk.main_quit(), False)[1])
         else:  # window
             self.set_keep_above(True)
+
+        self.connect('key-press-event', self._on_key_press)
+        visual = self.get_screen().get_rgba_visual()
+        if visual:
+            self.set_visual(visual)
+        self.set_app_paintable(True)
 
         provider = Gtk.CssProvider()
         provider.load_from_data(CSS)
@@ -175,52 +169,62 @@ class ClaudeUsageWindow(Gtk.Window):
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
         )
 
+        panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        panel.get_style_context().add_class('panel')
+        self.add(panel)
         wrapper = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        wrapper.set_margin_top(16)
-        wrapper.set_margin_bottom(16)
-        wrapper.set_margin_start(20)
-        wrapper.set_margin_end(20)
-        self.add(wrapper)
+        for side in ('top', 'bottom', 'start', 'end'):
+            getattr(wrapper, f'set_margin_{side}')(28)
+        panel.add(wrapper)
 
-        # Header
-        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        header.set_margin_bottom(16)
-
-        title = Gtk.Label(label='CLAUDE  USAGE', xalign=0)
-        title.get_style_context().add_class('header-label')
-
-        badge_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        badge_box.get_style_context().add_class('badge')
-        badge_box.set_margin_start(6)
-        badge_lbl = Gtk.Label(label='MAX 5×')
-        badge_lbl.get_style_context().add_class('badge-label')
-        badge_box.add(badge_lbl)
-
-        self.refresh_label = Gtk.Label(label='', xalign=1)
-        self.refresh_label.get_style_context().add_class('refresh-label')
-        self.refresh_label.set_hexpand(True)
-
-        header.pack_start(title, False, False, 0)
-        header.pack_start(badge_box, False, False, 0)
-        header.pack_end(self.refresh_label, True, True, 0)
+        header = Gtk.Box(spacing=10)
+        header.pack_start(label('Claude', 'title'), False, False, 0)
+        badge = label('Usage', 'badge')
+        badge.set_valign(Gtk.Align.CENTER)
+        header.pack_start(badge, False, False, 0)
+        close = Gtk.Button(label='×')
+        close.get_style_context().add_class('close')
+        close.set_tooltip_text('Close (Esc)')
+        close.get_accessible().set_name('Close widget')
+        close.connect('clicked', lambda *_: self.destroy())
+        header.pack_end(close, False, False, 0)
         wrapper.add(header)
+        subtitle = label('Your week with Claude', 'subtitle')
+        subtitle.set_margin_top(6)
+        subtitle.set_margin_bottom(22)
+        wrapper.add(subtitle)
 
-        self.content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         wrapper.add(self.content)
+        divider = Gtk.Separator()
+        divider.set_margin_top(20)
+        divider.set_margin_bottom(16)
+        wrapper.add(divider)
+        footer = Gtk.Box(spacing=12)
+        self.refresh_label = label('Connecting…', 'status')
+        footer.pack_start(self.refresh_label, True, True, 0)
+        self.refresh_button = Gtk.Button(label='Refresh')
+        self.refresh_button.set_tooltip_text('Refresh usage (R)')
+        self.refresh_button.connect('clicked', lambda *_: self._start_fetch())
+        footer.pack_end(self.refresh_button, False, False, 0)
+        wrapper.add(footer)
+        hint = label('R to refresh  ·  Esc to close', 'status')
+        hint.set_margin_top(16)
+        wrapper.add(hint)
 
-        self._showing_cached = False
+        self._has_usage = False
         cached = load_cached_usage()
         if cached:
             try:
                 self._rebuild_content(parse_usage(cached))
                 self.refresh_label.set_text('cached…')
-                self._showing_cached = True
+                self._has_usage = True
             except Exception:
                 self._show_loading()
         else:
             self._show_loading()
 
-        self.connect('destroy', Gtk.main_quit)
+        self.connect('destroy', self._on_destroy)
         if WIDGET_MODE == 'desktop':
             self.connect('size-allocate', lambda *_: self._anchor_to_corner())
         self.show_all()
@@ -235,11 +239,14 @@ class ClaudeUsageWindow(Gtk.Window):
     def _show_loading(self):
         self._clear_content()
         loading = Gtk.Label(label='Fetching usage data…', xalign=0)
-        loading.get_style_context().add_class('row-sub')
+        loading.get_style_context().add_class('caption')
         self.content.add(loading)
         self.content.show_all()
 
     def _on_key_press(self, _widget, event):
+        if event.keyval in (Gdk.KEY_r, Gdk.KEY_R):
+            self._start_fetch()
+            return True
         if event.keyval == Gdk.KEY_Escape:
             Gtk.main_quit()
             return True
@@ -257,12 +264,23 @@ class ClaudeUsageWindow(Gtk.Window):
         self._start_fetch()
         return True
 
+    def _on_destroy(self, *_):
+        self.alive = False
+        Gtk.main_quit()
+
     def _start_fetch(self):
+        if self.busy or not self.alive:
+            return
+        self.busy = True
+        self.refresh_button.set_sensitive(False)
+        self.refresh_label.set_text('Updating…')
         threading.Thread(target=self._fetch_worker, daemon=True).start()
 
     def _fetch_worker(self):
         try:
             data = fetch_usage()
+            if not parse_usage(data):
+                raise ValueError('No usage data returned. Check your session cookies in config.env.')
             save_cached_usage(data)
             GLib.idle_add(self._on_fetch_done, data, None)
         except subprocess.TimeoutExpired:
@@ -271,13 +289,18 @@ class ClaudeUsageWindow(Gtk.Window):
             GLib.idle_add(self._on_fetch_done, None, f'Error: {e}')
 
     def _on_fetch_done(self, data, err):
+        if not self.alive:
+            return False
+        self.busy = False
+        self.refresh_button.set_sensitive(True)
+        self.refresh_label.set_tooltip_text(err)
         if err:
-            if self._showing_cached:
-                self.refresh_label.set_text('(stale)')
+            if self._has_usage:
+                self.refresh_label.set_text('Saved usage · stale')
             else:
                 self._show_error(err)
         else:
-            self._showing_cached = False
+            self._has_usage = True
             self._rebuild_content(parse_usage(data))
         return False
 
@@ -288,44 +311,50 @@ class ClaudeUsageWindow(Gtk.Window):
     def _show_error(self, msg):
         self._clear_content()
         lbl = Gtk.Label(label=msg, xalign=0, wrap=True)
-        lbl.get_style_context().add_class('error-label')
+        lbl.get_style_context().add_class('error')
+        lbl.set_max_width_chars(42)
         self.content.add(lbl)
+        self.refresh_label.set_text('Could not update')
         self.content.show_all()
-        self.resize(360, 50)
+        self.resize(424, 50)
 
     def _rebuild_content(self, rows):
         self._clear_content()
 
-        session_rows = [r for r in rows if r['is_session']]
-        weekly_rows  = [r for r in rows if not r['is_session']]
+        # Promote the all-model weekly limit; keep every other reported limit.
+        weekly = next((r for r in rows if r['name'] == 'Weekly · All models'), None)
+        if weekly:
+            self.content.add(label('Weekly usage', 'detail'))
+            hero = Gtk.Box(spacing=12)
+            hero.add(label(f"{weekly['pct']:g}%", 'value'))
+            unit = label('used', 'unit')
+            unit.set_valign(Gtk.Align.END)
+            hero.add(unit)
+            self.content.add(hero)
+            meter = Meter()
+            meter.update(weekly['pct'])
+            self.content.add(meter)
+            remaining = label(f"{max(0, 100 - weekly['pct']):g}% remaining this week", 'remaining')
+            remaining.set_margin_top(8)
+            remaining.set_margin_bottom(24)
+            self.content.add(remaining)
+            reset = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            reset.get_style_context().add_class('reset-box')
+            reset.add(label('Weekly reset', 'caption'))
+            reset.add(label(weekly['sublabel'] or 'Reset time not provided', 'detail'))
+            self.content.add(reset)
 
-        if session_rows:
-            sec = Gtk.Label(label='CURRENT SESSION', xalign=0)
-            sec.get_style_context().add_class('section-title')
-            sec.set_margin_bottom(10)
-            self.content.add(sec)
-            for r in session_rows:
-                self.content.add(make_row(r['name'], r['sublabel'], r['pct']))
-
-        if weekly_rows:
-            div = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
-            div.set_margin_top(4)
-            div.set_margin_bottom(12)
-            self.content.add(div)
-            sec2 = Gtk.Label(label='WEEKLY LIMITS', xalign=0)
-            sec2.get_style_context().add_class('section-title')
-            sec2.set_margin_bottom(10)
-            self.content.add(sec2)
-            for r in weekly_rows:
-                self.content.add(make_row(r['name'], r['sublabel'], r['pct']))
+        for row in rows:
+            if row is not weekly:
+                self.content.add(make_row(row['name'], row['sublabel'], row['pct']))
 
         if not rows:
             self._show_error('No usage data returned.')
             return
 
-        self.refresh_label.set_text(f"updated {datetime.now().strftime('%H:%M')}")
+        self.refresh_label.set_text(f"Updated {datetime.now().strftime('%H:%M')}")
         self.content.show_all()
-        self.resize(360, 50)
+        self.resize(424, 50)
 
 
 if __name__ == '__main__':

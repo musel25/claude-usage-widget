@@ -9,8 +9,8 @@ Three ways to view your usage:
 
 | Tool | Command | Output |
 |------|---------|--------|
-| `claude_usage_cli.py` | `python3 claude_usage_cli.py` | Color terminal dashboard |
-| `claude_usage_widget.py` | `python3 claude_usage_widget.py` | GTK3 GUI window |
+| `claude_usage_cli.py` | `uv run python claude_usage_cli.py` | Color terminal dashboard |
+| `claude_usage_widget.py` | `uv run python claude_usage_widget.py` | GTK3 GUI window |
 | `claude_usage.sh` | `bash claude_usage.sh` | Raw JSON (for debugging) |
 
 ## Why this exists
@@ -32,7 +32,7 @@ not pip):
 
 ```bash
 # Debian / Ubuntu
-sudo apt install python3-gi gir1.2-gtk-3.0 curl
+sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 curl
 
 # Fedora
 sudo dnf install python3-gobject gtk3 curl
@@ -49,6 +49,8 @@ works without any extra packages.
 ```bash
 git clone https://github.com/musel25/claude-usage-widget.git
 cd claude-usage-widget
+uv venv --python /usr/bin/python3 --system-site-packages
+uv sync
 cp config.env.example config.env
 # then edit config.env with your credentials — see next section
 ```
@@ -81,7 +83,7 @@ grab all three from a logged-in claude.ai browser session.
 ### Terminal dashboard
 
 ```bash
-python3 claude_usage_cli.py
+uv run python claude_usage_cli.py
 ```
 
 Optional: add a shell alias for one-letter access. Append to `~/.zshrc` or
@@ -93,8 +95,16 @@ alias cu='/usr/bin/python3 /absolute/path/to/claude-usage-widget/claude_usage_cl
 
 ### GUI widget
 
+A rounded navy panel with a large weekly percentage, segmented usage meters,
+remaining quota, and a reset card matches the companion Codex widget. Session
+and per-model limits stay visible below. Use **Refresh** (or **R**) to update
+and **×** (or **Esc**) to close. Failed refreshes retain available usage with
+a stale indicator; hover over the status for the error details.
+
+![Claude usage widget with example data](docs/widget-preview.png)
+
 ```bash
-python3 claude_usage_widget.py
+uv run python claude_usage_widget.py
 ```
 
 Behavior is controlled by `WIDGET_MODE` in `config.env`:
@@ -165,8 +175,8 @@ HUD-style usage check that fades on its own.
   session cookies. Anthropic could change either at any time.
 - **Don't share `config.env`.** `SESSION_KEY` is equivalent to a logged-in
   session for your account.
-- The "MAX 5×" badge is purely cosmetic — the actual quota numbers come from
-  whatever the API reports for your plan.
+- The neutral "Usage" badge does not assume a subscription plan. Quotas come
+  from the API response.
 
 ## License
 
