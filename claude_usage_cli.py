@@ -16,12 +16,12 @@ DIM   = '\x1b[2m'
 WHITE     = rgb_fg(232, 232, 232)
 GREY      = rgb_fg(136, 136, 136)
 DARKGREY  = rgb_fg(102, 102, 102)
-BLUE      = rgb_fg(74, 158, 255)
-BLUE_BG   = rgb_bg(30, 58, 95)
+ACCENT      = rgb_fg(234, 161, 126)
+ACCENT_BG   = rgb_bg(70, 50, 41)
 ORANGE    = rgb_fg(245, 166, 35)
 RED       = rgb_fg(255, 107, 107)
 TROUGH_BG = rgb_bg(42, 42, 42)
-BLUE_FILL_BG   = rgb_bg(74, 158, 255)
+ACCENT_FILL_BG   = rgb_bg(234, 161, 126)
 ORANGE_FILL_BG = rgb_bg(245, 166, 35)
 RED_FILL_BG    = rgb_bg(255, 68, 68)
 
@@ -31,7 +31,7 @@ BAR_WIDTH = 36
 def color_for(pct):
     if pct >= 80: return RED, RED_FILL_BG
     if pct >= 60: return ORANGE, ORANGE_FILL_BG
-    return BLUE, BLUE_FILL_BG
+    return ACCENT, ACCENT_FILL_BG
 
 
 def render_bar(pct):
@@ -57,10 +57,10 @@ def render_row(row):
 def render_dashboard(rows):
     now = datetime.now().strftime('%H:%M')
     lines = []
-    badge = f'{BLUE_BG}{BLUE} MAX 5× {RESET}'
+    badge = f'{ACCENT_BG}{ACCENT} Usage {RESET}'
     title = f'{BOLD}{WHITE}CLAUDE  USAGE{RESET}'
     updated = f'{DIM}{DARKGREY}updated {now}{RESET}'
-    pad = max(1, BAR_WIDTH + 2 - len('CLAUDE  USAGE') - len(' MAX 5× ') - len(f'updated {now}') - 2)
+    pad = max(1, BAR_WIDTH + 2 - len('CLAUDE  USAGE') - len(' Usage ') - len(f'updated {now}') - 2)
     lines.append(f'{title} {badge}{" " * pad}{updated}')
     lines.append('')
 

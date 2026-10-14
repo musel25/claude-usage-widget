@@ -95,8 +95,8 @@ alias cu='/usr/bin/python3 /absolute/path/to/claude-usage-widget/claude_usage_cl
 
 ### GUI widget
 
-A rounded navy panel with a large weekly percentage, segmented usage meters,
-remaining quota, and a reset card matches the companion Codex widget. Session
+A rounded warm charcoal panel with terracotta accents with a large weekly percentage, segmented usage meters,
+remaining quota, and a reset card shares a layout with the companion Codex widget. Session
 and per-model limits stay visible below. Use **Refresh** (or **R**) to update
 and **×** (or **Esc**) to close. Failed refreshes retain available usage with
 a stale indicator; hover over the status for the error details.

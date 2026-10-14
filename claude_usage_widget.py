@@ -40,26 +40,26 @@ from gi.repository import Gtk, GLib, Gdk
 
 CSS = b'''
 window { background: transparent; font-family: Lato, sans-serif; }
-.panel { background: #172337; border: 1px solid #3a4b64; border-radius: 22px; }
-label { color: #f4f7fc; }
+.panel { background: #292521; border: 1px solid #55453b; border-radius: 22px; }
+label { color: #faf4ed; }
 .title { font-size: 22px; font-weight: 800; }
-.subtitle { color: #adbacd; font-size: 13px; }
-.badge { color: #c4d9fa; background: #2a3d58; border-radius: 8px; padding: 5px 10px; font-size: 11px; font-weight: 700; }
+.subtitle { color: #c5b8ab; font-size: 13px; }
+.badge { color: #f1b89d; background: #463229; border-radius: 8px; padding: 5px 10px; font-size: 11px; font-weight: 700; }
 .value { font-size: 66px; font-weight: 300; letter-spacing: -2px; }
-.unit { color: #adbacd; font-size: 15px; padding-bottom: 15px; }
-.remaining { color: #94bfff; font-size: 15px; font-weight: 700; }
+.unit { color: #c5b8ab; font-size: 15px; padding-bottom: 15px; }
+.remaining { color: #eaa17e; font-size: 15px; font-weight: 700; }
 .detail { font-size: 15px; font-weight: 700; }
-.caption { color: #adbacd; font-size: 12px; }
-.status { color: #adbacd; font-size: 11px; }
+.caption { color: #c5b8ab; font-size: 12px; }
+.status { color: #c5b8ab; font-size: 11px; }
 .warning { color: #f5c879; }
 .error { color: #ff9292; }
-.reset-box { background: #203047; border-radius: 12px; padding: 16px; }
-button { background: transparent; background-image: none; color: #c4d9fa; border: 1px solid #475975; border-radius: 8px; padding: 7px 12px; box-shadow: none; text-shadow: none; font-size: 12px; }
-button:hover { background: #304561; border-color: #94bfff; }
-button:focus { border-color: #94bfff; outline: 2px solid #94bfff; outline-offset: 2px; }
-button:disabled { color: #7a8aa1; border-color: #304159; }
+.reset-box { background: #352d27; border-radius: 12px; padding: 16px; }
+button { background: transparent; background-image: none; color: #f1b89d; border: 1px solid #746052; border-radius: 8px; padding: 7px 12px; box-shadow: none; text-shadow: none; font-size: 12px; }
+button:hover { background: #514035; border-color: #eaa17e; }
+button:focus { border-color: #eaa17e; outline: 2px solid #eaa17e; outline-offset: 2px; }
+button:disabled { color: #958477; border-color: #4b3c32; }
 .close { border: none; padding: 3px 6px; font-size: 18px; }
-separator { background: #35445a; min-height: 1px; }
+separator { background: #504238; min-height: 1px; }
 '''
 
 
@@ -90,7 +90,7 @@ class Meter(Gtk.DrawingArea):
         count, gap, height = 32, 4, 12
         width = (self.get_allocated_width() - gap * (count - 1)) / count
         y = (self.get_allocated_height() - height) / 2
-        color = (0.58, 0.75, 1.0)
+        color = (0.918, 0.631, 0.494)
         if self.percent is not None and self.percent >= 90:
             color = (1.0, 0.57, 0.57)
         elif self.percent is not None and self.percent >= 75:
@@ -98,7 +98,7 @@ class Meter(Gtk.DrawingArea):
         filled = min(100, max(0, self.percent or 0)) / 100 * count
         for i in range(count):
             x = i * (width + gap)
-            cr.set_source_rgb(0.21, 0.29, 0.40)
+            cr.set_source_rgb(0.31, 0.25, 0.21)
             cr.rectangle(x, y, width, height)
             cr.fill()
             fraction = min(1, max(0, filled - i))
