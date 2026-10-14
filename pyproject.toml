@@ -14,3 +14,7 @@ dependencies = []
 # - claude_usage_widget.py needs GTK3 + PyGObject, which on Linux are installed
 #   as system packages, not via pip. See README.md for the apt/dnf commands.
 # - `curl` must be available on PATH.
+
+[project.urls]
+Repository = "https://github.com/musel25/claude-usage-widget"
+Issues = "https://github.com/musel25/claude-usage-widget/issues"

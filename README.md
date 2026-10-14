@@ -1,5 +1,8 @@
 # Claude Usage Widget
 
+[![Checks](https://github.com/musel25/claude-usage-widget/actions/workflows/checks.yml/badge.svg)](https://github.com/musel25/claude-usage-widget/actions/workflows/checks.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A small Linux desktop widget and terminal CLI that show your **claude.ai** usage
 limits — current 5-hour session and weekly limits per model — by reading the
 same `/api/organizations/<org_id>/usage` endpoint that the
@@ -21,6 +24,8 @@ session cookies and renders it locally — terminal or GUI — so you can check
 your remaining quota at a glance.
 
 ## Requirements
+
+- [uv](https://docs.astral.sh/uv/) for the Python environment
 
 - Linux (tested on Ubuntu/GNOME; Wayland and X11 both work)
 - Python 3.9+
@@ -180,4 +185,12 @@ HUD-style usage check that fades on its own.
 
 ## License
 
-MIT
+[MIT](LICENSE). Unofficial; not affiliated with or endorsed by Anthropic.
+
+## Contributing and companion widget
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for offline tests, a credential-free
+preview, and contribution guidelines. Screenshots above use synthetic data.
+
+Also available: [Codex Usage Widget](https://github.com/musel25/codex-usage-widget).
+The two widgets share a layout but keep separate installations and authentication.
