@@ -134,7 +134,9 @@ Pass details come from Claude Code's local sign-in at
 `~/.claude/.credentials.json` (or `$CLAUDE_CONFIG_DIR/.credentials.json`). This
 read-only request uses Claude's OAuth usage endpoint. If Claude Code is not
 signed in, the pass section says its data is unavailable. The widget does not
-use passes. Pass details are not saved in the usage cache.
+use passes. Only pass labels and expiry times are saved in a separate cache so
+they appear as soon as the widget opens. Saved pass data is marked until the
+next successful check.
 
 ### Raw JSON
 

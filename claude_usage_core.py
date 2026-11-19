@@ -9,6 +9,7 @@ CACHE_PATH = os.path.join(
     os.environ.get('XDG_CACHE_HOME') or os.path.expanduser('~/.cache'),
     'claude-usage-widget', 'usage.json',
 )
+PASS_CACHE_PATH = os.path.join(os.path.dirname(CACHE_PATH), 'passes.json')
 
 # Actual API field → (display name, is_session)
 FIELD_MAP = {
@@ -136,6 +137,30 @@ def format_pass_expiry(expires_at, now=None):
     hours = remainder // 3600
     left = f'{days}d {hours}h left' if days else f'{hours}h left' if hours else 'Less than 1h left'
     return f"Expires {local.strftime('%b')} {local.day} at {local.strftime('%I:%M %p %Z').lstrip('0')} · {left}"
+
+
+def load_cached_passes():
+    try:
+        with open(PASS_CACHE_PATH) as stream:
+            data = json.load(stream)
+        if not isinstance(data, list):
+            return None
+        now = datetime.now(timezone.utc)
+        return [item for item in data if isinstance(item, dict)
+                and set(item) == {'label', 'expires_at'}
+                and isinstance(item['label'], str) and item['label'].strip()
+                and (expiry := _timestamp(item['expires_at'])) and expiry > now]
+    except (OSError, ValueError):
+        return None
+
+
+def save_cached_passes(passes):
+    try:
+        os.makedirs(os.path.dirname(PASS_CACHE_PATH), exist_ok=True)
+        with open(PASS_CACHE_PATH, 'w') as stream:
+            json.dump(passes, stream)
+    except OSError:
+        pass
 
 
 def fetch_reset_passes():
