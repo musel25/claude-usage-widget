@@ -92,6 +92,20 @@ class UsageTests(unittest.TestCase):
             self.assertEqual(request.get_header('Authorization'), 'Bearer fake-token')
             self.assertEqual(timeout, 15)
 
+    def test_pass_request_finds_claude_when_desktop_path_is_short(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            Path(directory, '.credentials.json').write_text(json.dumps({'claudeAiOauth': {'accessToken': 'fake-token'}}))
+            binary = root / '.local/bin/claude'
+            binary.parent.mkdir(parents=True)
+            binary.write_text('')
+            with patch.dict(os.environ, {'CLAUDE_CONFIG_DIR': directory, 'PATH': '/usr/bin:/bin'}), \
+                    patch.object(Path, 'home', return_value=root), \
+                    patch.object(subprocess, 'run', return_value=Mock(stdout='2.1.328 (Claude Code)')) as run, \
+                    patch.object(urllib.request.OpenerDirector, 'open', return_value=contextlib.closing(io.BytesIO(b'{"cedar_ember":{"grants":[]}}'))):
+                core.fetch_reset_passes()
+            self.assertEqual(run.call_args.args[0][0], str(binary))
+
 
 if __name__ == '__main__':
     unittest.main()
