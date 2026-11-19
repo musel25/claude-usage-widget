@@ -1,6 +1,6 @@
 """Shared fetch/parse logic for the Claude usage widget and CLI."""
 
-import json, os, re, subprocess, urllib.request
+import json, os, re, shutil, subprocess, urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -145,7 +145,8 @@ def fetch_reset_passes():
         token = json.loads(path.read_text())['claudeAiOauth']['accessToken']
         if not isinstance(token, str) or not token:
             raise ValueError
-        version = subprocess.run(['claude', '--version'], capture_output=True, text=True, timeout=5).stdout.split()[0]
+        binary = shutil.which('claude') or str(Path.home() / '.local/bin/claude')
+        version = subprocess.run([binary, '--version'], capture_output=True, text=True, timeout=5).stdout.split()[0]
         if not re.fullmatch(r'\d+\.\d+\.\d+', version):
             raise ValueError
         request = urllib.request.Request(
