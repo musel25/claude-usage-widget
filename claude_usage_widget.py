@@ -15,7 +15,7 @@ from datetime import datetime
 
 from claude_usage_core import (
     load_config, fetch_usage, fetch_reset_passes, format_pass_expiry, parse_usage,
-    load_cached_usage, save_cached_usage,
+    load_cached_usage, save_cached_usage, load_cached_passes, save_cached_passes,
 )
 
 REFRESH_SECONDS = 300  # 5 minutes
@@ -213,10 +213,13 @@ class ClaudeUsageWindow(Gtk.Window):
         wrapper.add(hint)
 
         self._has_usage = False
+        self._passes = load_cached_passes()
+        self._passes_cached = self._passes is not None
+        self._pass_lookup_complete = False
         cached = load_cached_usage()
         if cached:
             try:
-                self._rebuild_content(parse_usage(cached))
+                self._rebuild_content(parse_usage(cached), self._passes)
                 self.refresh_label.set_text('cached…')
                 self._has_usage = True
             except Exception:
@@ -284,6 +287,7 @@ class ClaudeUsageWindow(Gtk.Window):
             save_cached_usage(data)
             try:
                 passes = fetch_reset_passes()
+                save_cached_passes(passes)
             except RuntimeError:
                 passes = None
             GLib.idle_add(self._on_fetch_done, data, None, passes)
@@ -298,14 +302,19 @@ class ClaudeUsageWindow(Gtk.Window):
         self.busy = False
         self.refresh_button.set_sensitive(True)
         self.refresh_label.set_tooltip_text(err)
+        self._pass_lookup_complete = True
         if err:
             if self._has_usage:
+                self._rebuild_content(parse_usage(load_cached_usage() or {}), self._passes)
                 self.refresh_label.set_text('Saved usage · stale')
             else:
                 self._show_error(err)
         else:
             self._has_usage = True
-            self._rebuild_content(parse_usage(data), passes)
+            if passes is not None:
+                self._passes = passes
+                self._passes_cached = False
+            self._rebuild_content(parse_usage(data), self._passes)
         return False
 
     def _clear_content(self):
@@ -357,13 +366,15 @@ class ClaudeUsageWindow(Gtk.Window):
         reset_passes.set_margin_top(18)
         reset_passes.add(label('Available limit resets', 'caption'))
         if passes is None:
-            reset_passes.add(label('Pass data unavailable', 'detail'))
+            reset_passes.add(label('Pass data unavailable' if self._pass_lookup_complete else 'Checking reset passes…', 'detail'))
         elif not passes:
             reset_passes.add(label('No passes available', 'detail'))
         else:
             for item in passes:
                 reset_passes.add(label(item['label'], 'detail'))
                 reset_passes.add(label(format_pass_expiry(item['expires_at']), 'caption'))
+        if self._passes_cached:
+            reset_passes.add(label('Saved pass data · checking' if not self._pass_lookup_complete else 'Saved pass data · stale', 'caption'))
         self.content.add(reset_passes)
 
         if not rows:

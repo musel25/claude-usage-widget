@@ -106,6 +106,19 @@ class UsageTests(unittest.TestCase):
                 core.fetch_reset_passes()
             self.assertEqual(run.call_args.args[0][0], str(binary))
 
+    def test_pass_cache_is_immediate_and_drops_expired_passes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'passes.json'
+            passes = [{'label': 'Full reset', 'expires_at': '2099-12-01T00:00:00Z'}]
+            with patch.object(core, 'PASS_CACHE_PATH', str(path)):
+                self.assertIsNone(core.load_cached_passes())
+                core.save_cached_passes(passes)
+                self.assertEqual(core.load_cached_passes(), passes)
+                path.write_text(json.dumps([{'label': 'Old', 'expires_at': '2000-01-01T00:00:00Z'}]))
+                self.assertEqual(core.load_cached_passes(), [])
+                path.write_text('{broken')
+                self.assertIsNone(core.load_cached_passes())
+
 
 if __name__ == '__main__':
     unittest.main()
