@@ -14,7 +14,7 @@ import os, sys, subprocess, threading
 from datetime import datetime
 
 from claude_usage_core import (
-    load_config, fetch_usage, parse_usage,
+    load_config, fetch_usage, fetch_reset_passes, format_pass_expiry, parse_usage,
     load_cached_usage, save_cached_usage,
 )
 
@@ -282,13 +282,17 @@ class ClaudeUsageWindow(Gtk.Window):
             if not parse_usage(data):
                 raise ValueError('No usage data returned. Check your session cookies in config.env.')
             save_cached_usage(data)
-            GLib.idle_add(self._on_fetch_done, data, None)
+            try:
+                passes = fetch_reset_passes()
+            except RuntimeError:
+                passes = None
+            GLib.idle_add(self._on_fetch_done, data, None, passes)
         except subprocess.TimeoutExpired:
             GLib.idle_add(self._on_fetch_done, None, 'Request timed out.')
         except Exception as e:
             GLib.idle_add(self._on_fetch_done, None, f'Error: {e}')
 
-    def _on_fetch_done(self, data, err):
+    def _on_fetch_done(self, data, err, passes=None):
         if not self.alive:
             return False
         self.busy = False
@@ -301,7 +305,7 @@ class ClaudeUsageWindow(Gtk.Window):
                 self._show_error(err)
         else:
             self._has_usage = True
-            self._rebuild_content(parse_usage(data))
+            self._rebuild_content(parse_usage(data), passes)
         return False
 
     def _clear_content(self):
@@ -318,7 +322,7 @@ class ClaudeUsageWindow(Gtk.Window):
         self.content.show_all()
         self.resize(424, 50)
 
-    def _rebuild_content(self, rows):
+    def _rebuild_content(self, rows, passes=None):
         self._clear_content()
 
         # Promote the all-model weekly limit; keep every other reported limit.
@@ -347,6 +351,20 @@ class ClaudeUsageWindow(Gtk.Window):
         for row in rows:
             if row is not weekly:
                 self.content.add(make_row(row['name'], row['sublabel'], row['pct']))
+
+        reset_passes = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        reset_passes.get_style_context().add_class('reset-box')
+        reset_passes.set_margin_top(18)
+        reset_passes.add(label('Available limit resets', 'caption'))
+        if passes is None:
+            reset_passes.add(label('Pass data unavailable', 'detail'))
+        elif not passes:
+            reset_passes.add(label('No passes available', 'detail'))
+        else:
+            for item in passes:
+                reset_passes.add(label(item['label'], 'detail'))
+                reset_passes.add(label(format_pass_expiry(item['expires_at']), 'caption'))
+        self.content.add(reset_passes)
 
         if not rows:
             self._show_error('No usage data returned.')

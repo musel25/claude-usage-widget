@@ -22,7 +22,7 @@ win._on_fetch_done({
     'five_hour': {'utilization': 36},
     'seven_day_sonnet': {'utilization': 25},
     'seven_day_opus': {'utilization': 91},
-}, None)
+}, None, [{'label': 'Full reset', 'expires_at': (datetime.now(timezone.utc) + timedelta(days=11)).isoformat()}])
 
 output = Path(sys.argv[1] if len(sys.argv) > 1 else '/tmp/widget-preview.png')
 errors = []

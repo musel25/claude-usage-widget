@@ -4,7 +4,7 @@
 import subprocess, sys
 from datetime import datetime
 
-from claude_usage_core import fetch_usage, parse_usage
+from claude_usage_core import fetch_usage, fetch_reset_passes, format_pass_expiry, parse_usage
 
 
 def rgb_fg(r, g, b): return f'\x1b[38;2;{r};{g};{b}m'
@@ -54,7 +54,7 @@ def render_row(row):
     return '\n'.join(out)
 
 
-def render_dashboard(rows):
+def render_dashboard(rows, passes=None):
     now = datetime.now().strftime('%H:%M')
     lines = []
     badge = f'{ACCENT_BG}{ACCENT} Usage {RESET}'
@@ -81,6 +81,15 @@ def render_dashboard(rows):
             lines.append(render_row(r))
             lines.append('')
 
+    lines.append(f'  {GREY}AVAILABLE LIMIT RESETS{RESET}')
+    if passes is None:
+        lines.append(f'  {DARKGREY}Pass data unavailable{RESET}')
+    elif not passes:
+        lines.append(f'  {DARKGREY}No passes available{RESET}')
+    else:
+        for item in passes:
+            lines.append(f'  {WHITE}{item["label"]}{RESET}')
+            lines.append(f'  {DARKGREY}{format_pass_expiry(item["expires_at"])}{RESET}')
     return '\n'.join(lines)
 
 
@@ -100,7 +109,11 @@ def main():
         sys.exit(1)
 
     print()
-    print(render_dashboard(rows))
+    try:
+        passes = fetch_reset_passes()
+    except RuntimeError:
+        passes = None
+    print(render_dashboard(rows, passes))
 
 
 if __name__ == '__main__':

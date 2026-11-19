@@ -102,7 +102,9 @@ alias cu='/usr/bin/python3 /absolute/path/to/claude-usage-widget/claude_usage_cl
 
 A rounded warm charcoal panel with terracotta accents with a large weekly percentage, segmented usage meters,
 remaining quota, and a reset card shares a layout with the companion Codex widget. Session
-and per-model limits stay visible below. Use **Refresh** (or **R**) to update
+and per-model limits stay visible below. The **Available limit resets** section
+shows each banked pass and its local expiry time. The terminal summary shows the
+same list. Use **Refresh** (or **R**) to update
 and **×** (or **Esc**) to close. Failed refreshes retain available usage with
 a stale indicator; hover over the status for the error details.
 
@@ -127,6 +129,12 @@ disable).
 The widget caches the last successful response under
 `~/.cache/claude-usage-widget/usage.json` so it can paint immediately on launch
 while a fresh fetch runs in the background.
+
+Pass details come from Claude Code's local sign-in at
+`~/.claude/.credentials.json` (or `$CLAUDE_CONFIG_DIR/.credentials.json`). This
+read-only request uses Claude's OAuth usage endpoint. If Claude Code is not
+signed in, the pass section says its data is unavailable. The widget does not
+use passes. Pass details are not saved in the usage cache.
 
 ### Raw JSON
 
@@ -177,7 +185,8 @@ HUD-style usage check that fades on its own.
 ## Notes & caveats
 
 - **Unofficial.** This relies on a private claude.ai endpoint and on browser
-  session cookies. Anthropic could change either at any time.
+  session cookies. Pass details also use a private OAuth endpoint. Anthropic
+  could change these endpoints at any time.
 - **Don't share `config.env`.** `SESSION_KEY` is equivalent to a logged-in
   session for your account.
 - The neutral "Usage" badge does not assume a subscription plan. Quotas come

@@ -1,7 +1,8 @@
 """Shared fetch/parse logic for the Claude usage widget and CLI."""
 
-import json, os, subprocess
-from datetime import datetime
+import json, os, re, subprocess, urllib.request
+from datetime import datetime, timezone
+from pathlib import Path
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CACHE_PATH = os.path.join(
@@ -93,3 +94,74 @@ def parse_usage(data):
             'is_session': is_session,
         })
     return rows
+
+
+def _timestamp(value):
+    try:
+        dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+        return dt if dt.tzinfo else None
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
+def parse_reset_passes(payload, now=None):
+    """Return only available banked grants, without grant IDs or account data."""
+    current = _timestamp(now) if isinstance(now, str) else datetime.now(timezone.utc)
+    if current is None or not isinstance(payload, dict):
+        return []
+    block = payload.get('cedar_ember')
+    grants = block.get('grants') if isinstance(block, dict) else None
+    if not isinstance(grants, list):
+        return []
+    passes = []
+    for grant in grants:
+        if not isinstance(grant, dict):
+            continue
+        expiry = _timestamp(grant.get('ends_at'))
+        count = grant.get('resets_left')
+        label = grant.get('label')
+        if expiry and expiry > current and type(count) is int and count > 0 and isinstance(label, str) and label.strip():
+            passes.extend({'label': label.strip(), 'expires_at': grant['ends_at']} for _ in range(min(count, 20)))
+    return sorted(passes, key=lambda item: item['expires_at'])
+
+
+def format_pass_expiry(expires_at, now=None):
+    expiry = _timestamp(expires_at)
+    if expiry is None:
+        return 'Expiry unavailable'
+    current = now or datetime.now(timezone.utc)
+    local = expiry.astimezone()
+    remaining = max(0, int((expiry - current).total_seconds()))
+    days, remainder = divmod(remaining, 86400)
+    hours = remainder // 3600
+    left = f'{days}d {hours}h left' if days else f'{hours}h left' if hours else 'Less than 1h left'
+    return f"Expires {local.strftime('%b')} {local.day} at {local.strftime('%I:%M %p %Z').lstrip('0')} · {left}"
+
+
+def fetch_reset_passes():
+    """Read Claude Code's signed-in usage grant inventory. Never spend a grant."""
+    path = Path(os.environ.get('CLAUDE_CONFIG_DIR') or Path.home() / '.claude') / '.credentials.json'
+    try:
+        token = json.loads(path.read_text())['claudeAiOauth']['accessToken']
+        if not isinstance(token, str) or not token:
+            raise ValueError
+        version = subprocess.run(['claude', '--version'], capture_output=True, text=True, timeout=5).stdout.split()[0]
+        if not re.fullmatch(r'\d+\.\d+\.\d+', version):
+            raise ValueError
+        request = urllib.request.Request(
+            'https://api.anthropic.com/api/oauth/usage?cedar_ember=1',
+            headers={'Authorization': 'Bearer ' + token,
+                     'anthropic-beta': 'oauth-2025-04-20',
+                     'User-Agent': f'claude-cli/{version} (external, cli)'})
+        with urllib.request.build_opener(_NoRedirect()).open(request, timeout=15) as response:
+            payload = json.load(response)
+        if not isinstance(payload, dict) or not isinstance(payload.get('cedar_ember'), dict):
+            raise ValueError
+        return parse_reset_passes(payload)
+    except Exception:
+        raise RuntimeError('Limit reset passes unavailable') from None
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise RuntimeError('Limit reset passes unavailable')
